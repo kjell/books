@@ -18,11 +18,16 @@ slug = sed -e "s/'//g; s/[^[:alnum:]]/-/g" | \
 	tr A-Z a-z | \
 	sed -e 's/--/-/; s/^-//; s/-$$//'
 
+getBookInfo = xargs -I '{}' curl --silent "https://www.googleapis.com/books/v1/volumes?q=isbn:{}"
+
 booksToMarkdown: books.json
 	@jq -c '.[]' $< | while read -r book; do \
 		author=$$(jq -r '.author' <<<$$book); \
-		title=$$(jq -r '.title' <<<$$book); \
 		isbn=$$(jq -r '.isbn' <<<$$book); \
+		if [[ -z $$author ]]; then \
+			author=$$(echo $$isbn | $(getBookInfo) | jq -r '.items[0].volumeInfo.authors | join(" and ")'); \
+		fi; \
+		title=$$(jq -r '.title' <<<$$book); \
 		requestDate=$$(jq -r '.requestDate' <<<$$book); \
 		simpleTitle=$$(sed 's/ [:|=].*//' <<<$$title); \
 		authorDir=$$(echo $$author | $(slug)); \
