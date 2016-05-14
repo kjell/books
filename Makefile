@@ -4,7 +4,7 @@ info.json: login
 	| jq '.' \
   > info.json
 
-books.json:
+books.json: info.json
 	@cat info.json | jq '.Itemsout + .Requests | map({ \
 		title: .Title, \
 		author: (.Author | split(", ") | reverse | join(" ") | gsub("[0-9]+-([0-9]+)? "; "")), \
@@ -43,7 +43,7 @@ login:
 	--data "code=$$BARCODE&pin=$$PIN&lremember=1" --compressed \
 	-c cookies.txt
 
-PHONY: login
+PHONY: books.json info.json
 
 credentials:
 	echo $$PATRON -- $$BARCODE -- $$PIN
