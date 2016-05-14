@@ -28,10 +28,19 @@ booksToMarkdown: books.json
 		authorDir=$$(echo $$author | $(slug)); \
 		filename=$$(echo $$simpleTitle | $(slug)); \
 		file=$$authorDir/$$filename.md; \
-		[[ -f $$file ]] && existingContent=$$(pandoc --to markdown $$file); \
 		[[ -n $$(sed 's/null//' <<<$$requestDate) ]] && file=requests/$$file; \
+		if [[ -f $$file ]]; then \
+			existingContent=$$(pandoc --to markdown $$file); \
+		else \
+			existingContent=''; \
+		fi; \
 		[[ -d $$(dirname $$file) ]] || mkdir $$(dirname $$file); \
-		echo "$$(jq '.' <<<$$book | json2yaml)\n---\n\n$$existingContent" \
+		mergedMeta=$$(jq -s 'add' \
+			<(m2j $$file | jq '.[] | del(.basename, .preview)') \
+			<(echo $$book) \
+		| json2yaml); \
+		>&2 echo $$author -- $$simpleTitle; \
+		echo -e "$$mergedMeta\n---\n\n$$existingContent" \
 		> ./$$file; \
 	done
 
