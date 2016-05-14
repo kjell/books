@@ -23,12 +23,14 @@ booksToMarkdown: books.json
 		author=$$(jq -r '.author' <<<$$book); \
 		title=$$(jq -r '.title' <<<$$book); \
 		isbn=$$(jq -r '.isbn' <<<$$book); \
+		requestDate=$$(jq -r '.requestDate' <<<$$book); \
 		simpleTitle=$$(sed 's/ [:|=].*//' <<<$$title); \
 		authorDir=$$(echo $$author | $(slug)); \
 		filename=$$(echo $$simpleTitle | $(slug)); \
 		file=$$authorDir/$$filename.md; \
 		[[ -f $$file ]] && existingContent=$$(pandoc --to markdown $$file); \
-		[[ -d $$authorDir ]] || mkdir ./$$authorDir; \
+		[[ -n $$(sed 's/null//' <<<$$requestDate) ]] && file=requests/$$file; \
+		[[ -d $$(dirname $$file) ]] || mkdir $$(dirname $$file); \
 		echo "$$(jq '.' <<<$$book | json2yaml)\n---\n\n$$existingContent" \
 		> ./$$file; \
 	done
