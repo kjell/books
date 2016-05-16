@@ -1,3 +1,5 @@
+SHELL := bash
+
 info.json: login
 	@curl --silent "https://apps.hclib.org/services/patron/1887832" \
 		-b cookies.txt \
@@ -33,7 +35,13 @@ booksToMarkdown: books.json
 		authorDir=$$(echo $$author | $(slug)); \
 		filename=$$(echo $$simpleTitle | $(slug)); \
 		file=$$authorDir/$$filename.md; \
-		[[ -n $$(sed 's/null//' <<<$$requestDate) ]] && file=requests/$$file; \
+		notCheckedOutYet=$$(sed 's/null//' <<<$$requestDate); \
+		[[ -n $$notCheckedOutYet ]] && file=requests/$$file; \
+		[[ -d $$(dirname $$file) ]] || mkdir $$(dirname $$file); \
+		if [[ -f requests/$$file && -z $$notCheckedOutYet ]]; then \
+			mv requests/$$file $$file; \
+			rmdir requests/$$file 2&>/dev/null; \
+		fi; \
 		if [[ -f $$file ]]; then \
 			existingContent=$$(pandoc --to markdown $$file); \
 		else \
