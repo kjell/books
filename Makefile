@@ -20,14 +20,15 @@ slug = sed -e "s/'//g; s/[^[:alnum:]]/-/g" | \
 	tr A-Z a-z | \
 	sed -e 's/--/-/; s/^-//; s/-$$//'
 
-getBookInfo = xargs -I '{}' curl --silent "https://www.googleapis.com/books/v1/volumes?q=isbn:{}"
+getBookInfo = xargs -I '{}' curl --silent "https://www.googleapis.com/books/v1/volumes?q={}"
+getBookInfoByISBN = xargs -I '{}' curl --silent "https://www.googleapis.com/books/v1/volumes?q=isbn:{}"
 
 booksToMarkdown: books.json
 	@jq -c '.[]' $< | while read -r book; do \
 		author=$$(jq -r '.author' <<<$$book); \
 		isbn=$$(jq -r '.isbn' <<<$$book); \
 		if [[ -z $$author ]]; then \
-			author=$$(echo $$isbn | $(getBookInfo) | jq -r '.items[0].volumeInfo.authors | join(" and ")'); \
+			author=$$(echo $$isbn | $(getBookInfoByISBN) | jq -r '.items[0].volumeInfo.authors | join(" and ")'); \
 		fi; \
 		title=$$(jq -r '.title' <<<$$book); \
 		requestDate=$$(jq -r '.requestDate' <<<$$book); \
@@ -69,3 +70,20 @@ PHONY: books.json info.json
 
 credentials:
 	echo $$PATRON -- $$BARCODE -- $$PIN
+
+# Use google's book search to pull metadata for a book isn't from the library
+nonLibrary:
+	@json=$$(echo $(terms) | $(getBookInfo) | jq '.items[0].volumeInfo | { \
+		title: .title, \
+		author: .authors | join(" and "), \
+		isbn: .industryIdentifiers[0].identifier \
+	}'); \
+	title=$$(jq -r '.title' <<<$$json); \
+	author=$$(jq -r '.author' <<<$$json); \
+	authorDir=$$(echo $$author | $(slug)); \
+	filename=$$(echo $$title | $(slug)); \
+	file=$$authorDir/$$filename.md; \
+	[[ -d $$(dirname $$file) ]] || mkdir $$(dirname $$file); \
+	echo $$title -- $$author -- $$file; \
+	echo -e "$$(json2yaml <<<$$json)\n---\n" > $$file; \
+
