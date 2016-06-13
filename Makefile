@@ -21,7 +21,7 @@ slug = sed -e "s/'//g; s/[^[:alnum:]]/-/g" | \
 	sed -e 's/--/-/; s/^-//; s/-$$//'
 
 getBookInfo = xargs -I '{}' curl --silent "https://www.googleapis.com/books/v1/volumes" -G --data-urlencode "q={}"
-getBookInfoByISBN = xargs -I '{}' curl --silent "https://www.googleapis.com/books/v1/volumes?q=isbn:{}"
+getBookInfoByISBN = xargs -I '{}' echo "isbn:{}" | $(getBookInfo)
 
 booksToMarkdown: books.json
 	@jq -c '.[]' $< | while read -r book; do \
@@ -66,12 +66,22 @@ login:
 	--data "code=$$BARCODE&pin=$$PIN&lremember=1" --compressed \
 	-c cookies.txt
 
-PHONY: books.json info.json
+PHONY: books.json info.json search nonLibrary
 
 credentials:
 	echo $$PATRON -- $$BARCODE -- $$PIN
 
-# Use google's book search to pull metadata for a book isn't from the library
+search:
+	@echo $(terms) | $(getBookInfo) \
+	| jq -r '.items | \
+	  map(.volumeInfo) \
+		| map(.title, (.authors | join(" and ")), "---\n")[] \
+	'
+
+isbn:
+	@echo $(isbn) | $(getBookInfoByISBN)
+
+# Use google's book search to pull metadata for not-library books
 nonLibrary:
 	@json=$$(echo $(terms) | $(getBookInfo) | jq '.items[0].volumeInfo | { \
 		title: .title, \
