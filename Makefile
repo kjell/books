@@ -20,7 +20,7 @@ slug = sed -e "s/'//g; s/[^[:alnum:]]/-/g" | \
 	tr A-Z a-z | \
 	sed -e 's/--/-/; s/^-//; s/-$$//'
 
-getBookInfo = xargs -I '{}' curl --silent "https://www.googleapis.com/books/v1/volumes?q={}"
+getBookInfo = xargs -I '{}' curl --silent "https://www.googleapis.com/books/v1/volumes" -G --data-urlencode "q={}"
 getBookInfoByISBN = xargs -I '{}' curl --silent "https://www.googleapis.com/books/v1/volumes?q=isbn:{}"
 
 booksToMarkdown: books.json
